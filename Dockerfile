@@ -8,7 +8,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN mkdir /uploads /downloads
+RUN mkdir -p /uploads /downloads
 
 EXPOSE 5000
 
