@@ -57,7 +57,7 @@ def index():
         if file and not allowed_file(file.filename):
             flash(Markup('Looks like this timer''s  data is not supported yet. '
                          'Please open an issue on the '
-                         '<a href="https://github.com/tussosedan/kuebiko-cubing/issues">github page</a>'
+                         '<a href="https://github.com/anton-3/kuebiko-cubing/issues">github page</a>'
                          ' and upload the file there.'))
             return redirect(request.url)
         if (file and allowed_file(file.filename)) or textdata:
@@ -93,7 +93,7 @@ def index():
             except NotImplementedError:
                 flash(Markup('Looks like this file type is not supported yet. '
                              'Please open an issue on the '
-                             '<a href="https://github.com/tussosedan/kuebiko-cubing/issues">github page</a>'
+                             '<a href="https://github.com/anton-3/kuebiko-cubing/issues">github page</a>'
                              ' and upload the file there.'))
                 return redirect(request.url)
             except WCAIDValueError:
@@ -103,7 +103,7 @@ def index():
                 if not app.debug:
                     flash(Markup('Something went wrong while reading the file. '
                                  'Please open an issue on the '
-                                 '<a href="https://github.com/tussosedan/kuebiko-cubing/issues">github page</a>'
+                                 '<a href="https://github.com/anton-3/kuebiko-cubing/issues">github page</a>'
                                  ' and upload the file there.'))
                     timestr = time.strftime("%Y%m%d_%H%M%S_")
                     if file:
@@ -128,7 +128,7 @@ def index():
 def request_entity_too_large(e):
     flash(Markup('The file is too large. '
                  'If the file is truly valid, please open an issue on the '
-                 '<a href="https://github.com/tussosedan/kuebiko-cubing/issues">github page</a>'
+                 '<a href="https://github.com/anton-3/kuebiko-cubing/issues">github page</a>'
                  ' and upload the file there.'))
     return render_template("index.html"), 413
 
