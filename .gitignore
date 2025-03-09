@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# WCA data zip (default location)
+wca_data/WCA_export.tsv.zip
