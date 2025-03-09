@@ -6,15 +6,25 @@ import time
 import re
 from werkzeug.utils import secure_filename
 from io import BytesIO
+import dotenv
+
+dotenv_location = dotenv.find_dotenv()
+if not dotenv_location:
+    print('ERROR: please add a .env')
+    print('run `cp .env.example .env` then edit .env to a proper configuration')
+    exit(1)
+dotenv.load_dotenv(dotenv_location)
 
 ALLOWED_EXTENSIONS = {'txt', 'json', 'csv'}
-UPLOAD_FOLDER = r'C:\uploads'
-DEBUG = True
+UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/uploads')
+DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'super secret key !@#')
+MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', 16 * 1024 * 1024))
 
 app = Flask(__name__)
-app.secret_key = "super secret key !@#"
+app.secret_key = SECRET_KEY
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 
 
 def allowed_file(filename):

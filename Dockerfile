@@ -8,4 +8,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN mkdir /uploads /downloads
+
+EXPOSE 5000
+
 CMD ["python", "app.py"]

@@ -19,8 +19,16 @@ import zipfile
 from io import BytesIO
 
 import os
+import dotenv
 
-WCA_DATA_FOLDER = r'C:\downloads'
+dotenv_location = dotenv.find_dotenv()
+if not dotenv_location:
+    print('ERROR: please add a .env')
+    print('run `cp .env.example .env` then edit .env to a proper configuration')
+    exit(1)
+dotenv.load_dotenv(dotenv_location)
+
+WCA_DATA_FOLDER = os.environ.get('WCA_DATA_FOLDER', '/downloads')
 
 
 @jit
