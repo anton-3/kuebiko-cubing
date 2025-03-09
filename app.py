@@ -9,6 +9,7 @@ from io import BytesIO
 
 ALLOWED_EXTENSIONS = {'txt', 'json', 'csv'}
 UPLOAD_FOLDER = r'C:\uploads'
+DEBUG = True
 
 app = Flask(__name__)
 app.secret_key = "super secret key !@#"
@@ -123,6 +124,4 @@ def request_entity_too_large(e):
 
 
 if __name__ == '__main__':
-    # app.run(debug=True, host='0.0.0.0')
-    app.run(debug=True)
-    # app.run()
+    app.run(debug=DEBUG, host='0.0.0.0')
