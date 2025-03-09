@@ -1,5 +1,7 @@
 - optimize wca id extraction
   - I think it unzips the whole massive 200mb zip every single time someone puts in a wca id which makes it super slow
+- properly handle invalid wca id input
+- probably a lot of other stuff worth doing too I've barely looked at the codebase
 
 ---- old todo below
 TODO puz-cat tabs prevent second row on mobile. collapse? images? also collapse long main nav?
