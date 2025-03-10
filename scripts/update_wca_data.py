@@ -67,7 +67,7 @@ def download_wca_export(download_url, filepath):
 
 def main():
     file_timestamp = get_local_file_timestamp(WCA_ZIP_FILEPATH)
-    print(f'local file timestamp is {file_timestamp if file_timestamp else 'not found'}')
+    print(f'local file timestamp is {file_timestamp if file_timestamp else "not found"}')
     print('polling WCA endpoint for latest data export...')
     latest_timestamp, download_url = poll_latest_export()
 
