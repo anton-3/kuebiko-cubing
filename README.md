@@ -11,6 +11,8 @@ This codebase probably won't get maintained much. I do have a more permanent hos
 - `docker build -t kuebiko-cubing .`
 - `docker run -v ./wca_data:/downloads --name kuebiko-cubing -p 5000:5000 kuebiko-cubing`
 - if you want the WCA ID input to work on the homepage, you need to download https://www.worldcubeassociation.org/export/results/WCA_export.tsv.zip and put it in the wca_data folder (with that same filename)
+  - I wrote a script `scripts/update_wca_data.py` that automatically polls WCA for new data exports and downloads them into the correct location. If you're hosting, you can set this up with a cronjob
+  - e.g. daily `0 0 * * * python3 <repo path>/scripts/update_wca_data.py`
 
 Codebase seems to require specifically Python 3.6 to install requirements and run properly. I added a Dockerfile and .env configuration to make things easier to work with.
 
