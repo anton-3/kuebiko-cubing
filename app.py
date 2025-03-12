@@ -16,10 +16,12 @@ if not dotenv_location:
 dotenv.load_dotenv(dotenv_location)
 
 ALLOWED_EXTENSIONS = {'txt', 'json', 'csv'}
-UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/uploads')
-DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
+
+PORT = int(os.environ.get('PORT', '5000'))
 SECRET_KEY = os.environ.get('SECRET_KEY', 'super secret key !@#')
+DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
 MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', 16 * 1024 * 1024))
+UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', '/uploads')
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
@@ -134,4 +136,9 @@ def request_entity_too_large(e):
 
 
 if __name__ == '__main__':
-    app.run(debug=DEBUG, host='0.0.0.0')
+    if DEBUG:
+        app.run(debug=True, port=PORT)
+    else:
+        from waitress import serve
+        print(f'Starting production Waitress server on 0.0.0.0:{PORT}', flush=True)
+        serve(app, port=5000)
