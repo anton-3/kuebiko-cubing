@@ -2,7 +2,8 @@ from datetime import datetime, timedelta
 from math import floor, ceil, isnan
 
 from numba import jit
-from numpy import sort, repeat, NaN, array, select
+from numpy import sort, argsort, repeat, NaN, array, select
+import pandas
 from pandas import read_csv, to_datetime, concat, notnull, DataFrame, Series, cut, set_option, melt, merge
 
 from plotly.offline import plot
@@ -970,11 +971,13 @@ def generate_dates_histogram(solves_data, group_date_str, tickformat, dtick, tim
         plot_data.columns = [' '.join(str(i).strip() for i in col) for col in plot_data.columns.values]
 
     data = []
-    for col in sorted(plot_data.columns, key=lambda s: str(s).casefold()):
+    sort_key = [str(c).casefold() for c in plot_data.columns]
+    sorted_indices = argsort(sort_key, kind='mergesort')
+    for i in sorted_indices:
         data.append(go.Bar(
             x=plot_data.index,
-            y=plot_data[col],
-            name=col,
+            y=plot_data.iloc[:, i],
+            name=plot_data.columns[i],
             showlegend=True
         ))
 
