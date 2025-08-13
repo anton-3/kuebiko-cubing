@@ -1399,7 +1399,7 @@ def drop_all_dnf_categories(solves_data):
 
 def process_data(file, chart_by, secondary_y_axis, subx_threshold_mode, subx_override, day_end_hour, timezone,
                  trim_percentage, merge_categories):
-    set_option('display.max_colwidth', -1)
+    set_option('display.max_colwidth', None)
 
     # timezone could be a tz name string, or an offset in minutes
     if represents_int(timezone):
