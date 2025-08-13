@@ -137,8 +137,8 @@ def request_entity_too_large(e):
 
 if __name__ == '__main__':
     if DEBUG:
-        app.run(debug=True, port=PORT)
+        app.run(debug=True, host='0.0.0.0', port=PORT) # docker seems to require host 0.0.0.0
     else:
         from waitress import serve
         print(f'Starting production Waitress server on 0.0.0.0:{PORT}', flush=True)
-        serve(app, port=5000)
+        serve(app, port=PORT)
