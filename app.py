@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-from flask import Flask, render_template, request, redirect, flash, Markup, send_from_directory
+from flask import Flask, render_template, request, redirect, flash, send_from_directory
+from markupsafe import Markup
 from backend import process_data, WCAIDValueError
 import os
 import traceback
