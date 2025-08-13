@@ -54,8 +54,7 @@ def round_half_up(n):
 
 
 @jit
-def rolling_trimmed_mean(data, window_size, outliers_to_trim):
-    x = sort(data[:window_size], order=['IsDNF', 'TimeCentiSec'])
+def rolling_trimmed_mean(data, window_size, outliers_to_trim, sorted_window_data):
     means = repeat(NaN, len(data))
     rsd = repeat(NaN, len(data))
 
@@ -63,10 +62,10 @@ def rolling_trimmed_mean(data, window_size, outliers_to_trim):
         return means, rsd
 
     for i in range(window_size, len(data) + 1):
-        if x[window_size - outliers_to_trim - 1]['IsDNF'] == 1:
+        if sorted_window_data[window_size - outliers_to_trim - 1]['IsDNF'] == 1:
             means[i - 1] = NaN
         else:
-            counting_solves = x[outliers_to_trim: window_size - outliers_to_trim]['TimeCentiSec']
+            counting_solves = sorted_window_data[outliers_to_trim: window_size - outliers_to_trim]['TimeCentiSec']
             counting_solves_mean = counting_solves.mean()
             means[i - 1] = round_half_up(counting_solves_mean)
             # consistency score = mean / stdev (both trimmed)
@@ -78,16 +77,16 @@ def rolling_trimmed_mean(data, window_size, outliers_to_trim):
                 rsd[i - 1] = 0
 
         if i != len(data):
-            idx_old = binary_search_2d(x, data[i - window_size], window_size)
-            idx_new = binary_search_2d(x, data[i], window_size)
+            idx_old = binary_search_2d(sorted_window_data, data[i - window_size], window_size)
+            idx_new = binary_search_2d(sorted_window_data, data[i], window_size)
             if idx_old < idx_new:
-                x[idx_old:idx_new - 1] = x[idx_old + 1:idx_new]
-                x[idx_new - 1] = data[i]
+                sorted_window_data[idx_old:idx_new - 1] = sorted_window_data[idx_old + 1:idx_new]
+                sorted_window_data[idx_new - 1] = data[i]
             elif idx_new < idx_old:
-                x[idx_new + 1:idx_old + 1] = x[idx_new:idx_old]
-                x[idx_new] = data[i]
+                sorted_window_data[idx_new + 1:idx_old + 1] = sorted_window_data[idx_new:idx_old]
+                sorted_window_data[idx_new] = data[i]
             else:
-                x[idx_new] = data[i]
+                sorted_window_data[idx_new] = data[i]
 
     return means, rsd
 
@@ -104,7 +103,8 @@ def calculate_and_store_running_ao(solves_data, puzzle, category, ao_len, trim_p
         outliers_to_trim = ceil(ao_len * (trim_percentage / 100))
         prefix = 'ao'
 
-    means, rsd = rolling_trimmed_mean(solves_data_part_array, ao_len, outliers_to_trim)
+    sorted_window_data = sort(solves_data_part_array[:ao_len], order=['IsDNF', 'TimeCentiSec'])
+    means, rsd = rolling_trimmed_mean(solves_data_part_array, ao_len, outliers_to_trim, sorted_window_data)
 
     solves_data.loc[solves_data_part.index, prefix + str(ao_len)] = means / 100
     solves_data.loc[solves_data_part.index, 'rsd' + str(ao_len)] = rsd
