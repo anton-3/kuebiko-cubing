@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from math import floor, ceil, isnan
 
 from numba import jit
-from numpy import sort, argsort, repeat, NaN, array, select
+from numpy import sort, argsort, repeat, nan as NaN, array, select
 import pandas
 from pandas import read_csv, to_datetime, concat, notnull, DataFrame, Series, cut, set_option, melt, merge
 
