@@ -1,4 +1,5 @@
 general:
+- TESTS
 - fix how data is shown for a full cstimer export that has multiple sessions with the same name
 - refactor so that the frontend doesn't stall on a single request till the processing is done
   - mainly so cloudflare doesn't nuke all reqs that take longer than a minute
