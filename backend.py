@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from math import floor, ceil, isnan
 
 from numba import jit
@@ -232,10 +232,11 @@ def get_pb_progression(solves_data, puzzle, category, ao_len, has_dates, timezon
                                           & (solves_data_part[series + '_cummin'].notnull())][column_list]
 
         solves_data_pb['PB For Time'] = solves_data_pb['SolveDatetime'].diff(periods=-1) * -1
+        solves_data_pb['PB For Time'] = solves_data_pb['PB For Time'].astype(object)
 
         last_date = solves_data_pb.tail(1)['SolveDatetime']
-        last_date_value = Series(datetime.utcnow().replace(microsecond=0)).dt.tz_localize(
-            'UTC').dt.tz_convert(timezone).dt.tz_localize(None).iloc[0]
+        last_date_value = Series(datetime.now(UTC).replace(microsecond=0)).dt.tz_convert(
+            timezone).dt.tz_localize(None).iloc[0]
         last_date_diff = last_date_value - last_date.iloc[0]
         if notnull(last_date_diff):
             solves_data_pb.loc[last_date.index, 'PB For Time'] = str(last_date_diff) + ' and counting'
@@ -251,6 +252,7 @@ def get_pb_progression(solves_data, puzzle, category, ao_len, has_dates, timezon
 
     solves_data_pb['PB For # Solves'] = (solves_data_pb['index'].diff(periods=-1) * -1).dropna().apply(
         lambda x: str(int(x)))
+    solves_data_pb['PB For # Solves'] = solves_data_pb['PB For # Solves'].astype(object)
 
     last_index = solves_data_pb.tail(1)['index']
     solves_data_pb.loc[last_index.index, 'PB For # Solves'] = str(
@@ -309,10 +311,11 @@ def get_first_subx_progression(pb_progression, ao_len, has_dates, timezone, solv
         first_subx_progression = pb_progression.loc[first_subx_ids][column_list]
 
         first_subx_progression['Time Until Next Sub-X'] = first_subx_progression['Date & Time'].diff(periods=1) * -1
+        first_subx_progression['Time Until Next Sub-X'] = first_subx_progression['Time Until Next Sub-X'].astype(object)
 
         last_date = first_subx_progression.head(1)['Date & Time']
-        last_date_value = Series(datetime.utcnow().replace(microsecond=0)).dt.tz_localize(
-            'UTC').dt.tz_convert(timezone).dt.tz_localize(None).iloc[0]
+        last_date_value = Series(datetime.now(UTC).replace(microsecond=0)).dt.tz_convert(
+            timezone).dt.tz_localize(None).iloc[0]
         last_date_diff = last_date_value - last_date.iloc[0]
         if notnull(last_date_diff):
             first_subx_progression.loc[last_date.index, 'Time Until Next Sub-X'] = str(last_date_diff) + ' and counting'
@@ -341,6 +344,7 @@ def get_first_subx_progression(pb_progression, ao_len, has_dates, timezone, solv
 
     first_subx_progression['# Solves Until Next Sub-X'] = (
             first_subx_progression['Solve #'].diff(periods=1) * -1).dropna().apply(lambda x: str(int(x)))
+    first_subx_progression['# Solves Until Next Sub-X'] = first_subx_progression['# Solves Until Next Sub-X'].astype(object)
 
     last_index = first_subx_progression.head(1)['Solve #']
     first_subx_progression.loc[last_index.index, '# Solves Until Next Sub-X'] = str(
@@ -466,7 +470,7 @@ def get_top_solves(solves_data_part, ao_len, top_n, has_dates, trim_percentage):
 
     if ('Date & Time' in column_list) and top_solves['Date & Time'].isnull().all():
         top_solves.drop(labels='Date & Time', axis='columns', inplace=True)
-    top_solves.fillna(value='--', inplace=True)
+    top_solves.astype(object).fillna(value='--', inplace=True)
 
     # create a column for solve rank
     top_solves.reset_index(inplace=True, drop=True)
@@ -842,7 +846,7 @@ def generate_histogram(plot_data_raw, name):
     labels = [sec2dtstr(sec) + "-" + sec2dtstr(sec + 0.99) for sec in intervals[:-1]]
 
     bins = cut(plot_data_raw, intervals, right=False, labels=labels)
-    plot_data = plot_data_raw.groupby(bins).count()
+    plot_data = plot_data_raw.groupby(bins, observed=False).count()
 
     return go.Bar(
         x=intervals_dt,
@@ -871,7 +875,7 @@ def get_histograms_plot(solves_data, puzzle, category):
                                   '<br>rsd100: ' + '{:.1%}'.format(plot_data_raw['rsd100'].iloc[-1])
 
     part_reindexed = solves_data_part[['single', 'ao100', 'ao1000', 'rsd100', 'rsd1000']].reset_index()
-    idxmin = part_reindexed['ao100'].idxmin()
+    idxmin = part_reindexed['ao100'].idxmin() if part_reindexed['ao100'].notna().any() else None
     if notnull(idxmin):
         data.append(generate_histogram(part_reindexed['single'][idxmin + 1 - 100: idxmin + 1], 'PB ao100'))
         annotations['PB ao100'] = 'PB ao100: ' + str(part_reindexed['ao100'][idxmin]) + \
@@ -883,7 +887,7 @@ def get_histograms_plot(solves_data, puzzle, category):
         annotations['last 1000'] = 'last ao1000: ' + str(plot_data_raw['ao1000'].iloc[-1]) + \
                                    '<br>rsd1000: ' + '{:.1%}'.format(plot_data_raw['rsd1000'].iloc[-1])
 
-    idxmin = part_reindexed['ao1000'].idxmin()
+    idxmin = part_reindexed['ao1000'].idxmin() if part_reindexed['ao1000'].notna().any() else None
     if notnull(idxmin):
         data.append(generate_histogram(part_reindexed['single'][idxmin + 1 - 1000: idxmin + 1], 'PB ao1000'))
         annotations['PB ao1000'] = 'PB ao1000: ' + str(part_reindexed['ao1000'][idxmin]) + \
