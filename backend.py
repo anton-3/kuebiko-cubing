@@ -3,8 +3,7 @@ from math import floor, ceil, isnan
 
 from numba import jit
 from numpy import sort, argsort, repeat, nan as NaN, array, select
-import pandas
-from pandas import read_csv, to_datetime, concat, notnull, DataFrame, Series, cut, set_option, melt, merge
+from pandas import read_csv, to_datetime, to_numeric, concat, notnull, DataFrame, Series, cut, set_option, melt, merge
 
 from plotly.offline import plot
 import plotly.graph_objs as go
@@ -1442,22 +1441,16 @@ def process_data(file, chart_by, secondary_y_axis, subx_threshold_mode, subx_ove
             for ao_len in (3, 5, 12, 50, 100, 1000):
                 calculate_and_store_running_subx(solves_data, puzzle, category, ao_len, subx_threshold)
 
-    for series in 'single', 'mo3', 'ao5', 'ao12', 'ao50', 'ao100', 'ao1000':
+    avg_columns = ['single', 'mo3', 'ao5', 'ao12', 'ao50', 'ao100', 'ao1000']
+    for series in avg_columns:
         solves_data[series + '_str'] = solves_data[series][notnull(solves_data[series])].apply(sec2dtstr)
         solves_data[series + '_dt'] = solves_data[series].apply(sec2dt)
 
-    solves_data[
-        ['single_cummin', 'mo3_cummin', 'ao5_cummin', 'ao12_cummin',
-         'ao50_cummin', 'ao100_cummin', 'ao1000_cummin']] = \
-        solves_data.groupby(['Puzzle', 'Category']).cummin()[
-            ['single', 'mo3', 'ao5', 'ao12', 'ao50', 'ao100', 'ao1000']]
-
-    solves_data[
-        ['single_cummin', 'mo3_cummin', 'ao5_cummin', 'ao12_cummin',
-         'ao50_cummin', 'ao100_cummin', 'ao1000_cummin']] = \
-        solves_data.groupby(['Puzzle', 'Category'])[
-            ['single_cummin', 'mo3_cummin', 'ao5_cummin', 'ao12_cummin',
-             'ao50_cummin', 'ao100_cummin', 'ao1000_cummin']].fillna(method='ffill')
+    numeric_data = solves_data[avg_columns].apply(to_numeric, errors='coerce')
+    numeric_data[['Puzzle', 'Category']] = solves_data[['Puzzle', 'Category']]
+    new_cummin_cols = [f'{col}_cummin' for col in avg_columns]
+    solves_data[new_cummin_cols] = numeric_data.groupby(['Puzzle', 'Category'])[avg_columns].cummin()
+    solves_data[new_cummin_cols] = solves_data.groupby(['Puzzle', 'Category'])[new_cummin_cols].ffill()
 
     solves_details = get_all_solves_details(solves_data, has_dates, timezone, chart_by, secondary_y_axis,
                                             subx_thresholds, trim_percentage)
