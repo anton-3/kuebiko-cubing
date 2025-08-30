@@ -1,4 +1,10 @@
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, timezone
+try:
+    # Python 3.11+
+    from datetime import UTC
+except ImportError:
+    # Python 3.10 or older
+    UTC = timezone.utc
 from math import floor, ceil, isnan
 
 from numba import jit
