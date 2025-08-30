@@ -34,7 +34,7 @@ def get_local_file_timestamp(zip_path):
                 metadata = json.loads(f.read())
         timestamp = datetime.strptime(metadata['export_date'], '%Y-%m-%d %H:%M:%S %Z')
         return timestamp
-    except (FileNotFoundError, ValueError, KeyError):
+    except (FileNotFoundError, ValueError, KeyError, zipfile.BadZipFile):
         return None
 
 """
