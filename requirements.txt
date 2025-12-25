@@ -53,6 +53,8 @@ polars==1.36.1
     # via -r requirements.in
 polars-runtime-32==1.36.1
     # via polars
+pyarrow==22.0.0
+    # via -r requirements.in
 pyproject-hooks==1.2.0
     # via
     #   build

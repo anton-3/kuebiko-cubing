@@ -7,5 +7,6 @@ pandas
 pip-tools
 plotly
 polars
+pyarrow
 python-dotenv
 waitress

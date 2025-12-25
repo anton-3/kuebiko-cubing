@@ -24,8 +24,13 @@ from collections import OrderedDict
 import zipfile
 from io import BytesIO
 
+import polars as pl
+
 import os
 import dotenv
+
+import functools
+print = functools.partial(print, flush=True)
 
 dotenv_location = dotenv.find_dotenv()
 if not dotenv_location:
@@ -1348,72 +1353,86 @@ def create_dataframe(file, timezone):
     elif len(headers.strip()) == 10:
         # WCA ID
         timer_type = 'WCAID'
+        wca_id = headers.strip().upper()
+        print(f'{datetime.now().strftime("%I:%M:%S.%f")} - start')
 
         with zipfile.ZipFile(os.path.join(WCA_DATA_FOLDER, 'WCA_export.tsv.zip')) as z:
-            filtered = BytesIO()
+            print(f'{datetime.now().strftime("%I:%M:%S.%f")} before results filter')
             with z.open('WCA_export_results.tsv') as f:
-                for i, line in enumerate(f):
-                    if i == 0:
-                        filtered.write(line)
-                    if '\t' + headers.strip().upper() + '\t' in line.decode():
-                        filtered.write(line)
-                filtered.seek(0)
-                results = read_csv(filtered, sep='\t', dtype={'event_id': object})
-                filtered.close()
+                results = pl.read_csv(f, separator='\t', quote_char=None, schema_overrides={'event_id': pl.Utf8})
+            results = results.filter(pl.col('person_id') == wca_id)
+            print(f'{datetime.now().strftime("%I:%M:%S.%f")} after results filter')
 
             if len(results) == 0:
                 raise WCAIDValueError
 
-            result_ids = set(str(rid) for rid in results['id'].tolist())
+            result_ids = results.select('id').to_series()
 
-            # Filter and read result_attempts for this competitor's results
-            # result_id is at column index 3
-            filtered_attempts = BytesIO()
+            # filter for the results for this competitor
+            print(f'{datetime.now().strftime("%I:%M:%S.%f")} before attempts filter')
             with z.open('WCA_export_result_attempts.tsv') as f:
-                for i, line in enumerate(f):
-                    if i == 0:
-                        filtered_attempts.write(line)
-                    else:
-                        parts = line.decode().split('\t')
-                        if len(parts) > 3 and parts[3] in result_ids:
-                            filtered_attempts.write(line)
-                filtered_attempts.seek(0)
-                result_attempts = read_csv(filtered_attempts, sep='\t')
-                filtered_attempts.close()
+                result_attempts = pl.read_csv(f, separator='\t', quote_char=None)
+            result_attempts = result_attempts.filter(pl.col('result_id').is_in(result_ids))
+            print(f'{datetime.now().strftime("%I:%M:%S.%f")} after attempts filter')
 
             with z.open('WCA_export_competitions.tsv') as f:
-                comps = read_csv(f, sep='\t')
+                comps = pl.read_csv(f, separator='\t', quote_char=None)
+            print(f'{datetime.now().strftime("%I:%M:%S.%f")} after comps')
 
             with z.open('WCA_export_events.tsv') as f:
-                events = read_csv(f, sep='\t')
+                events = pl.read_csv(f, separator='\t', quote_char=None)
+            print(f'{datetime.now().strftime("%I:%M:%S.%f")} after events')
 
-        results.rename(inplace=True, columns={'id': 'result_id'})
+        comps = comps.with_columns(
+            pl.date(pl.col('year'), pl.col('month'), pl.col('day')).alias('SolveDatetime')
+        )
 
-        comps['SolveDatetime'] = to_datetime(comps[['year', 'month', 'day']]).astype('datetime64[s]')
-        events_timed = events[events['format'] == 'time']
-        rescomp = merge(results, comps, how='inner', left_on=['competition_id'], right_on=['id'])
-        all_joined = merge(rescomp[['event_id', 'SolveDatetime', 'result_id']],
-                           events_timed, how='inner', left_on=['event_id'], right_on=['id'])
+        events_timed = events.filter(pl.col('format') == 'time')
 
-        all_with_attempts = merge(all_joined, result_attempts[['result_id', 'value', 'attempt_number']],
-                                  how='inner', on='result_id')
+        results = results.rename({'id': 'result_id'})
+        rescomp = results.join(comps, left_on='competition_id', right_on='id', how='inner')
 
-        all_with_attempts = all_with_attempts.sort_values(
-            ['SolveDatetime', 'name', 'result_id', 'attempt_number'])
+        all_joined = rescomp.select(['event_id', 'SolveDatetime', 'result_id']).join(
+            events_timed, left_on='event_id', right_on='id', how='inner'
+        )
+
+        all_with_attempts = all_joined.join(
+            result_attempts.select(['result_id', 'value', 'attempt_number']),
+            on='result_id', how='inner'
+        )
+
+        all_with_attempts = all_with_attempts.sort(['SolveDatetime', 'name', 'result_id', 'attempt_number'])
 
         # filter out 0 (no result) and -2 (DNS)
-        all_with_attempts = all_with_attempts[(all_with_attempts['value'] != 0) & (all_with_attempts['value'] != -2)]
+        all_with_attempts = all_with_attempts.filter(
+            (pl.col('value') != 0) & (pl.col('value') != -2)
+        )
 
-        all_with_attempts['Penalty'] = 0
-        all_with_attempts.loc[all_with_attempts['value'] <= 0, 'Penalty'] = 2  # -1=DNF
-        all_with_attempts['Time(millis)'] = all_with_attempts['value'] * 10
-        all_with_attempts.rename(inplace=True, columns={'name': 'Category'})
-        all_with_attempts['Puzzle'] = results.iloc[-1]['person_name'] + ' (' + results.iloc[-1]['person_id'] + ')'
+        all_with_attempts = all_with_attempts.with_columns(
+            pl.when(pl.col('value') < 0).then(2).otherwise(0).alias('Penalty')
+        )
+
+        # convert centiseconds to milliseconds
+        all_with_attempts = all_with_attempts.with_columns(
+            (pl.col('value') * 10).alias('Time(millis)')
+        )
+
+        all_with_attempts = all_with_attempts.rename({'name': 'Category'})
+
+        person_name = results.select('person_name').row(0)[0]
+        person_id = results.select('person_id').row(0)[0]
+        all_with_attempts = all_with_attempts.with_columns(
+            pl.lit(f'{person_name} ({person_id})').alias('Puzzle')
+        )
+
+        # convert to pandas for the remainder of the processing, we're past the slow part
+        df = all_with_attempts.select(['Puzzle', 'Category', 'SolveDatetime', 'Time(millis)', 'Penalty']).to_pandas()
+        df['SolveDatetime'] = to_datetime(df['SolveDatetime']).astype('datetime64[s]')
 
         has_dates = True
         mergeable_categories = False  # categories are already merged
-        return all_with_attempts[['Puzzle', 'Category', 'SolveDatetime', 'Time(millis)',
-                                  'Penalty']], has_dates, timer_type, mergeable_categories
+        print(f'{datetime.now().strftime("%I:%M:%S.%f")} - end')
+        return df, has_dates, timer_type, mergeable_categories
     else:
         raise NotImplementedError('Unrecognized file type')
 
