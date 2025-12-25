@@ -6,8 +6,12 @@
 #
 blinker==1.9.0
     # via flask
+build==1.3.0
+    # via pip-tools
 click==8.2.1
-    # via flask
+    # via
+    #   flask
+    #   pip-tools
 dateparser==1.2.2
     # via -r requirements.in
 flask==3.1.1
@@ -36,12 +40,23 @@ numpy==2.2.6
     #   pandas
 packaging==25.0
     # via
+    #   build
     #   gunicorn
     #   plotly
 pandas==2.3.1
     # via -r requirements.in
+pip-tools==7.5.2
+    # via -r requirements.in
 plotly==6.3.0
     # via -r requirements.in
+polars==1.36.1
+    # via -r requirements.in
+polars-runtime-32==1.36.1
+    # via polars
+pyproject-hooks==1.2.0
+    # via
+    #   build
+    #   pip-tools
 python-dateutil==2.9.0.post0
     # via
     #   dateparser
@@ -64,3 +79,9 @@ waitress==3.0.2
     # via -r requirements.in
 werkzeug==3.1.3
     # via flask
+wheel==0.45.1
+    # via pip-tools
+
+# The following packages are considered to be unsafe in a requirements file:
+# pip
+# setuptools

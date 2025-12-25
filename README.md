@@ -6,7 +6,7 @@ This codebase probably won't get maintained much. I do have a more permanent hos
 
 ## development/hosting quickstart
 
-project SHOULD work on python 3.10+, does NOT support 3.9 or older
+project does NOT support 3.9 or older, SHOULD work on python 3.10+
 
 - `cp .env.example .env`
 - (edit .env to your liking)
@@ -25,6 +25,12 @@ with docker:
 - if you want the WCA ID input to work on the homepage, you need to download https://www.worldcubeassociation.org/export/results/WCA_export.tsv.zip and put it in the wca_data folder (with that same filename)
   - I wrote a script `scripts/update_wca_data.py` that automatically polls WCA for new data exports and downloads them into the `wca_data` folder. If you're hosting, you can set this up with a cronjob
   - e.g. daily `0 0 * * * python3 <repo path>/scripts/update_wca_data.py`
+
+## adding/removing dependencies
+
+- install pip-compile (in a venv or wherever)
+- change `requirements.in`
+- `pip-compile requirements.in` creates the new `requirements.txt`
 
 ## shoutout to the original creator
 

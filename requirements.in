@@ -1,0 +1,11 @@
+dateparser
+flask
+gunicorn
+numba
+numpy
+pandas
+pip-tools
+plotly
+polars
+python-dotenv
+waitress
