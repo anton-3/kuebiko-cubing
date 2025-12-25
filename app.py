@@ -145,4 +145,4 @@ if __name__ == '__main__':
     else:
         from waitress import serve
         print(f'Starting production Waitress server on 0.0.0.0:{PORT}', flush=True)
-        serve(app, port=PORT)
+        serve(app, port=PORT, trusted_proxy='*', trusted_proxy_headers='x-forwarded-for x-forwarded-proto x-forwarded-host x-forwarded-port')
