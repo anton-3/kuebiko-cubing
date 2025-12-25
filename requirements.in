@@ -6,7 +6,7 @@ numpy
 pandas
 pip-tools
 plotly
-polars
+polars[rtcompat]
 pyarrow
 python-dotenv
 waitress

@@ -1425,13 +1425,13 @@ def create_dataframe(file, timezone):
             pl.lit(f'{person_name} ({person_id})').alias('Puzzle')
         )
 
-        # convert to pandas for the remainder of the processing, we're past the slow part
+        # convert to pandas for the remainder of the processing
         df = all_with_attempts.select(['Puzzle', 'Category', 'SolveDatetime', 'Time(millis)', 'Penalty']).to_pandas()
         df['SolveDatetime'] = to_datetime(df['SolveDatetime']).astype('datetime64[s]')
 
         has_dates = True
         mergeable_categories = False  # categories are already merged
-        print(f'{datetime.now().strftime("%I:%M:%S.%f")} - end')
+        print(f'{datetime.now().strftime("%I:%M:%S.%f")} - end polars stuff')
         return df, has_dates, timer_type, mergeable_categories
     else:
         raise NotImplementedError('Unrecognized file type')
