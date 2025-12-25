@@ -1,0 +1,10 @@
+services:
+  kuebiko-cubing:
+    build: .
+    image: kuebiko-cubing:latest
+    container_name: kuebiko-cubing
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./wca_data:/downloads
+    restart: unless-stopped

@@ -4,4 +4,4 @@
 git pull
 
 # rebuild the docker image
-docker compose up --build -d
+docker compose -f compose.prod.yaml up --build -d

@@ -1,10 +1,14 @@
 services:
   kuebiko-cubing:
     build: .
-    image: kuebiko-cubing:latest
-    container_name: kuebiko-cubing
+    image: kuebiko-cubing:dev
+    container_name: kuebiko-cubing-dev
     ports:
       - "5000:5000"
     volumes:
+      - ./:/app
       - ./wca_data:/downloads
-    restart: unless-stopped
+      - /app/__pycache__
+    environment:
+      - DEBUG=true
+    restart: "no"
