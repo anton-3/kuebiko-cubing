@@ -1351,48 +1351,69 @@ def create_dataframe(file, timezone):
 
         with zipfile.ZipFile(os.path.join(WCA_DATA_FOLDER, 'WCA_export.tsv.zip')) as z:
             filtered = BytesIO()
-            with z.open('WCA_export_Results.tsv') as f:
+            with z.open('WCA_export_results.tsv') as f:
                 for i, line in enumerate(f):
                     if i == 0:
                         filtered.write(line)
                     if '\t' + headers.strip().upper() + '\t' in line.decode():
                         filtered.write(line)
-            filtered.seek(0)
-            results = read_csv(filtered, sep='\t', dtype={'eventId': object})
-            filtered.close()
+                filtered.seek(0)
+                results = read_csv(filtered, sep='\t', dtype={'event_id': object})
+                filtered.close()
 
-            with z.open('WCA_export_Competitions.tsv') as f:
+            if len(results) == 0:
+                raise WCAIDValueError
+
+            result_ids = set(str(rid) for rid in results['id'].tolist())
+
+            # Filter and read result_attempts for this competitor's results
+            # result_id is at column index 3
+            filtered_attempts = BytesIO()
+            with z.open('WCA_export_result_attempts.tsv') as f:
+                for i, line in enumerate(f):
+                    if i == 0:
+                        filtered_attempts.write(line)
+                    else:
+                        parts = line.decode().split('\t')
+                        if len(parts) > 3 and parts[3] in result_ids:
+                            filtered_attempts.write(line)
+                filtered_attempts.seek(0)
+                result_attempts = read_csv(filtered_attempts, sep='\t')
+                filtered_attempts.close()
+
+            with z.open('WCA_export_competitions.tsv') as f:
                 comps = read_csv(f, sep='\t')
 
-            with z.open('WCA_export_Events.tsv') as f:
+            with z.open('WCA_export_events.tsv') as f:
                 events = read_csv(f, sep='\t')
 
-        if len(results) == 0:
-            raise WCAIDValueError
+        results.rename(inplace=True, columns={'id': 'result_id'})
 
-        results.reset_index(inplace=True)
-        results.rename(inplace=True, columns={'index': 'resultRowId'})
         comps['SolveDatetime'] = to_datetime(comps[['year', 'month', 'day']]).astype('datetime64[s]')
         events_timed = events[events['format'] == 'time']
-        rescomp = merge(results, comps, how='inner', left_on=['competitionId'], right_on=['id'])
-        all_joined = merge(rescomp[['eventId',
-                                    'SolveDatetime', 'resultRowId', 'value1', 'value2', 'value3', 'value4', 'value5']],
-                           events_timed, how='inner', left_on=['eventId'], right_on=['id'])
-        melted = melt(all_joined, id_vars=['name', 'SolveDatetime', 'resultRowId'],
-                      value_vars=['value1', 'value2', 'value3', 'value4', 'value5'], var_name='result_id',
-                      value_name='result').sort_values(
-            ['SolveDatetime', 'name', 'resultRowId', 'result_id'])
-        melted = melted[(melted['result'] != 0) & (melted['result'] != -2)]  # 0=no result; -2=DNS
-        melted['Penalty'] = 0
-        melted.loc[melted['result'] <= 0, 'Penalty'] = 2  # -1=DNF, others?
-        melted['Time(millis)'] = melted['result'] * 10
-        melted.rename(inplace=True, columns={'name': 'Category'})
-        melted['Puzzle'] = results.iloc[-1]['personName'] + ' (' + results.iloc[-1]['personId'] + ')'
+        rescomp = merge(results, comps, how='inner', left_on=['competition_id'], right_on=['id'])
+        all_joined = merge(rescomp[['event_id', 'SolveDatetime', 'result_id']],
+                           events_timed, how='inner', left_on=['event_id'], right_on=['id'])
+
+        all_with_attempts = merge(all_joined, result_attempts[['result_id', 'value', 'attempt_number']],
+                                  how='inner', on='result_id')
+
+        all_with_attempts = all_with_attempts.sort_values(
+            ['SolveDatetime', 'name', 'result_id', 'attempt_number'])
+
+        # filter out 0 (no result) and -2 (DNS)
+        all_with_attempts = all_with_attempts[(all_with_attempts['value'] != 0) & (all_with_attempts['value'] != -2)]
+
+        all_with_attempts['Penalty'] = 0
+        all_with_attempts.loc[all_with_attempts['value'] <= 0, 'Penalty'] = 2  # -1=DNF
+        all_with_attempts['Time(millis)'] = all_with_attempts['value'] * 10
+        all_with_attempts.rename(inplace=True, columns={'name': 'Category'})
+        all_with_attempts['Puzzle'] = results.iloc[-1]['person_name'] + ' (' + results.iloc[-1]['person_id'] + ')'
 
         has_dates = True
         mergeable_categories = False  # categories are already merged
-        return melted[['Puzzle', 'Category', 'SolveDatetime', 'Time(millis)',
-                       'Penalty']], has_dates, timer_type, mergeable_categories
+        return all_with_attempts[['Puzzle', 'Category', 'SolveDatetime', 'Time(millis)',
+                                  'Penalty']], has_dates, timer_type, mergeable_categories
     else:
         raise NotImplementedError('Unrecognized file type')
 
