@@ -41,6 +41,50 @@ dotenv.load_dotenv(dotenv_location)
 
 WCA_DATA_FOLDER = os.environ.get('WCA_DATA_FOLDER', '/downloads')
 
+# data from WCA_export.tsv.zip - loaded once at startup
+_wca_results = None
+_wca_result_attempts = None
+_wca_comps = None
+_wca_events_timed = None
+_wca_data_file_timestamp = None
+
+
+def init_wca_data():
+    """Load WCA data from zip file into memory"""
+    global _wca_results, _wca_result_attempts, _wca_comps, _wca_events_timed, _wca_data_file_timestamp
+
+    zip_path = os.path.join(WCA_DATA_FOLDER, 'WCA_export.tsv.zip')
+    if not os.path.exists(zip_path):
+        print(f'WCA data file not found at {zip_path}, WCA ID lookups will not work')
+        return
+    _wca_data_file_timestamp = os.path.getctime(zip_path)
+    print(f'WCA data file timestamp: {_wca_data_file_timestamp}')
+
+    print(f'{datetime.now().strftime("%I:%M:%S.%f")} - Loading WCA data...')
+
+    with zipfile.ZipFile(zip_path) as z:
+        print(f'{datetime.now().strftime("%I:%M:%S.%f")} - Loading results...')
+        with z.open('WCA_export_results.tsv') as f:
+            _wca_results = pl.read_csv(f, separator='\t', quote_char=None, schema_overrides={'event_id': pl.Utf8})
+
+        print(f'{datetime.now().strftime("%I:%M:%S.%f")} - Loading result attempts...')
+        with z.open('WCA_export_result_attempts.tsv') as f:
+            _wca_result_attempts = pl.read_csv(f, separator='\t', quote_char=None)
+
+        print(f'{datetime.now().strftime("%I:%M:%S.%f")} - Loading competitions...')
+        with z.open('WCA_export_competitions.tsv') as f:
+            comps = pl.read_csv(f, separator='\t', quote_char=None)
+        _wca_comps = comps.with_columns(
+            pl.date(pl.col('year'), pl.col('month'), pl.col('day')).alias('SolveDatetime')
+        )
+
+        print(f'{datetime.now().strftime("%I:%M:%S.%f")} - Loading events...')
+        with z.open('WCA_export_events.tsv') as f:
+            events = pl.read_csv(f, separator='\t', quote_char=None)
+        _wca_events_timed = events.filter(pl.col('format') == 'time')
+
+    print(f'{datetime.now().strftime("%I:%M:%S.%f")} - WCA data loaded successfully')
+
 
 @jit
 def binary_search_2d(a, x, size):
@@ -1111,6 +1155,9 @@ def parse_qqtimer_result(s):
 class WCAIDValueError(ValueError):
     pass
 
+class WCADataNotLoadedError(ValueError):
+    pass
+
 
 # penalty: 0: none, 1: +2 (time should already include the +2), 2: DNF
 def create_dataframe(file, timezone):
@@ -1354,46 +1401,32 @@ def create_dataframe(file, timezone):
         # WCA ID
         timer_type = 'WCAID'
         wca_id = headers.strip().upper()
-        print(f'{datetime.now().strftime("%I:%M:%S.%f")} - start')
 
-        with zipfile.ZipFile(os.path.join(WCA_DATA_FOLDER, 'WCA_export.tsv.zip')) as z:
-            print(f'{datetime.now().strftime("%I:%M:%S.%f")} before results filter')
-            with z.open('WCA_export_results.tsv') as f:
-                results = pl.read_csv(f, separator='\t', quote_char=None, schema_overrides={'event_id': pl.Utf8})
-            results = results.filter(pl.col('person_id') == wca_id)
-            print(f'{datetime.now().strftime("%I:%M:%S.%f")} after results filter')
+        if _wca_results is None or _wca_result_attempts is None or _wca_comps is None or _wca_events_timed is None or _wca_data_file_timestamp is None:
+            raise WCADataNotLoadedError('WCA data not loaded')
 
-            if len(results) == 0:
-                raise WCAIDValueError
+        zip_path = os.path.join(WCA_DATA_FOLDER, 'WCA_export.tsv.zip')
+        if os.path.exists(zip_path):
+            current_wca_data_file_timestamp = os.path.getctime(zip_path)
+            # if current timestamp is more than a week newer than previous data load
+            if current_wca_data_file_timestamp > _wca_data_file_timestamp + 7 * 24 * 60 * 60:
+                # re-init the data from the new zip
+                init_wca_data()
 
-            result_ids = results.select('id').to_series()
+        results = _wca_results.filter(pl.col('person_id') == wca_id)
 
-            # filter for the results for this competitor
-            print(f'{datetime.now().strftime("%I:%M:%S.%f")} before attempts filter')
-            with z.open('WCA_export_result_attempts.tsv') as f:
-                result_attempts = pl.read_csv(f, separator='\t', quote_char=None)
-            result_attempts = result_attempts.filter(pl.col('result_id').is_in(result_ids))
-            print(f'{datetime.now().strftime("%I:%M:%S.%f")} after attempts filter')
+        if len(results) == 0:
+            raise WCAIDValueError
 
-            with z.open('WCA_export_competitions.tsv') as f:
-                comps = pl.read_csv(f, separator='\t', quote_char=None)
-            print(f'{datetime.now().strftime("%I:%M:%S.%f")} after comps')
+        result_ids = results.select('id').to_series()
 
-            with z.open('WCA_export_events.tsv') as f:
-                events = pl.read_csv(f, separator='\t', quote_char=None)
-            print(f'{datetime.now().strftime("%I:%M:%S.%f")} after events')
-
-        comps = comps.with_columns(
-            pl.date(pl.col('year'), pl.col('month'), pl.col('day')).alias('SolveDatetime')
-        )
-
-        events_timed = events.filter(pl.col('format') == 'time')
+        result_attempts = _wca_result_attempts.filter(pl.col('result_id').is_in(result_ids))
 
         results = results.rename({'id': 'result_id'})
-        rescomp = results.join(comps, left_on='competition_id', right_on='id', how='inner')
+        rescomp = results.join(_wca_comps, left_on='competition_id', right_on='id', how='inner')
 
         all_joined = rescomp.select(['event_id', 'SolveDatetime', 'result_id']).join(
-            events_timed, left_on='event_id', right_on='id', how='inner'
+            _wca_events_timed, left_on='event_id', right_on='id', how='inner'
         )
 
         all_with_attempts = all_joined.join(
@@ -1431,7 +1464,6 @@ def create_dataframe(file, timezone):
 
         has_dates = True
         mergeable_categories = False  # categories are already merged
-        print(f'{datetime.now().strftime("%I:%M:%S.%f")} - end polars stuff')
         return df, has_dates, timer_type, mergeable_categories
     else:
         raise NotImplementedError('Unrecognized file type')

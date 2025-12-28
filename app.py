@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from flask import Flask, render_template, request, redirect, flash, send_from_directory
 from markupsafe import Markup
-from backend import process_data, WCAIDValueError
+from backend import process_data, WCAIDValueError, WCADataNotLoadedError, init_wca_data
 import os
 import traceback
 import time
@@ -102,6 +102,9 @@ def index():
                              '<a href="https://github.com/anton-3/kuebiko-cubing/issues">github page</a>'
                              ' and upload the file there.'))
                 return redirect(request.url)
+            except WCADataNotLoadedError:
+                flash(Markup('Unable to retrieve WCA data, please try again later.'))
+                return redirect(request.url)
             except WCAIDValueError:
                 flash('WCA ID not found')
                 return redirect(request.url)
@@ -140,6 +143,8 @@ def request_entity_too_large(e):
 
 
 if __name__ == '__main__':
+    init_wca_data() # for WCA ID lookups from WCA_export.tsv.zip
+
     if DEBUG:
         app.run(debug=True, host='0.0.0.0', port=PORT) # docker seems to require host 0.0.0.0
     else:
