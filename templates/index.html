@@ -230,6 +230,14 @@ window.onload = function () {
         tz = new Date().getTimezoneOffset() * -1;
     }
     document.getElementById('tz').value = tz;
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorMsg = urlParams.get('error');
+    if (errorMsg) {
+        showError(errorMsg);
+        // clean up URL without triggering page reload
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
 }
 
 $('#upload-form').on('submit', async (e) => {

@@ -33,13 +33,7 @@
 </head>
 <body>
 
-{% with messages = get_flashed_messages() %}
-<div id="flash-alert" class="alert alert-danger" role="alert" {% if not messages %}style="display: none;"{% endif %}>
-    {% for message in messages %}
-    {{ message }}
-    {% endfor %}
-</div>
-{% endwith %}
+<div id="flash-alert" class="alert alert-danger" role="alert" style="display: none;"></div>
 
 
 {% block content %}

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from flask import Flask, render_template, request, redirect, flash, send_from_directory, jsonify
-from markupsafe import Markup
+from flask import Flask, render_template, request, redirect, send_from_directory, jsonify
+from urllib.parse import quote
 from backend import process_data, WCAIDValueError, WCADataNotLoadedError, init_wca_data
 import os
 import traceback
@@ -66,11 +66,11 @@ def regex_replace_dom_id(s):
 def index():
     # UPDATE: this logic for POSTs is no longer used, but we'll keep it here for redundancy
     # see /api/start-processing for new async logic
+    # (error handling has been reworked to use GET param instead of flash())
     if request.method == 'POST':
         # check if the post request has the file part or textinput
         if 'file' not in request.files and request.form.get('textinput', '') == '':
-            flash('Please select a file or paste the data')
-            return redirect(request.url)
+            return redirect('/?error=' + quote('Please select a file or paste the data'))
         file = request.files.get('file', None)
         textdata = request.form.get('textinput', None)
         if textdata == '':
@@ -79,14 +79,12 @@ def index():
         # if user does not select file, browser also
         # submit an empty part without filename
         if file and file.filename == '' and not textdata:
-            flash('Please select a file or paste the data')
-            return redirect(request.url)
+            return redirect('/?error=' + quote('Please select a file or paste the data'))
         if file and not allowed_file(file.filename):
-            flash(Markup('Looks like this timer''s  data is not supported yet. '
+            return redirect('/?error=' + quote('Looks like this timer\'s data is not supported yet. '
                          'Please open an issue on the '
                          '<a href="https://github.com/anton-3/kuebiko-cubing/issues">github page</a>'
                          ' and upload the file there.'))
-            return redirect(request.url)
         if (file and allowed_file(file.filename)) or textdata:
             if file:
                 file_to_send = file.stream
@@ -118,23 +116,20 @@ def index():
                 return render_template("data.html", solves_details=solves_details, overall_pbs=overall_pbs,
                                        solves_by_dates=solves_by_dates, timer_type=timer_type, datalen=datalen)
             except NotImplementedError:
-                flash(Markup('Looks like this file type is not supported yet. '
+                return redirect('/?error=' + quote('Looks like this file type is not supported yet. '
                              'Please open an issue on the '
                              '<a href="https://github.com/anton-3/kuebiko-cubing/issues">github page</a>'
                              ' and upload the file there.'))
-                return redirect(request.url)
             except WCADataNotLoadedError:
-                flash(Markup('Unable to retrieve WCA data, please try again later.'))
-                return redirect(request.url)
+                return redirect('/?error=' + quote('Unable to retrieve WCA data, please try again later.'))
             except WCAIDValueError:
-                flash('WCA ID not found')
-                return redirect(request.url)
+                return redirect('/?error=' + quote('WCA ID not found'))
             except Exception:
                 if not app.debug:
-                    flash(Markup('Something went wrong while reading the file. '
+                    error_msg = ('Something went wrong while reading the file. '
                                  'Please open an issue on the '
                                  '<a href="https://github.com/anton-3/kuebiko-cubing/issues">github page</a>'
-                                 ' and upload the file there.'))
+                                 ' and upload the file there.')
                     timestr = time.strftime("%Y%m%d_%H%M%S_")
                     if file:
                         filename = timestr + secure_filename(file.filename)
@@ -147,7 +142,7 @@ def index():
                     err_filename = filename + '_err'
                     with open(os.path.join(app.config['UPLOAD_FOLDER'], err_filename), 'w') as err_file:
                         err_file.write(traceback.format_exc())
-                    return redirect(request.url)
+                    return redirect('/?error=' + quote(error_msg))
                 else:
                     raise
     return render_template("index.html")
@@ -291,14 +286,12 @@ def data_result(task_id):
     with _task_store_lock:
         print(_task_store.keys(), flush=True)
         task = _task_store.get(task_id)
-
+    
     if task is None:
-        flash('Results not found or expired. Please submit your solves again.')
-        return redirect('/')
-
+        return redirect('/?error=' + quote('Results not found or expired. Please submit your solves again.'))
+    
     if task["status"] != "success":
-        flash('Results not ready yet or processing failed.')
-        return redirect('/')
+        return redirect('/?error=' + quote('Results not ready yet or processing failed.'))
 
     result = task["result"]
     return render_template("data.html",
@@ -312,11 +305,11 @@ def data_result(task_id):
 # noinspection PyUnusedLocal
 @app.errorhandler(413)
 def request_entity_too_large(e):
-    flash(Markup('The file is too large. '
+    error_msg = ('The file is too large. '
                  'If the file is truly valid, please open an issue on the '
                  '<a href="https://github.com/anton-3/kuebiko-cubing/issues">github page</a>'
-                 ' and upload the file there.'))
-    return render_template("index.html"), 413
+                 ' and upload the file there.')
+    return redirect('/?error=' + quote(error_msg))
 
 
 if __name__ == '__main__':
