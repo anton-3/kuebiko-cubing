@@ -34,13 +34,11 @@
 <body>
 
 {% with messages = get_flashed_messages() %}
-{% if messages %}
-<div class="alert alert-danger" role="alert">
+<div id="flash-alert" class="alert alert-danger" role="alert" {% if not messages %}style="display: none;"{% endif %}>
     {% for message in messages %}
     {{ message }}
     {% endfor %}
 </div>
-{% endif %}
 {% endwith %}
 
 

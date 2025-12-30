@@ -9,7 +9,7 @@
 
 <div id="content" class="jumbotron text-center">
     <div class="d-flex justify-content-center">
-        <form action="{{url_for('index')}}" method="POST" enctype="multipart/form-data">
+        <form id="upload-form" enctype="multipart/form-data">
             <div class="form-group">
                 <label for="file" class="h4">Upload a timer backup file for analysis</label>
                 <div class="text-muted">Supported timers:
@@ -206,7 +206,7 @@
                           id="textinput" name="textinput" rows="1"
                           placeholder="WCA ID or paste the data here"></textarea>
             </div>
-            <button type="submit" class="btn btn-primary" onclick="loading()">
+            <button type="submit" class="btn btn-primary">
                 Submit
             </button>
         </form>
@@ -223,15 +223,118 @@
 
 <script type="application/javascript">
 window.onload = function () {
-        $('[data-toggle="tooltip"]').tooltip();
+    $('[data-toggle="tooltip"]').tooltip();
 
-        tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        if (tz == undefined) {
-            tz = new Date().getTimezoneOffset() * -1;
-        }
-        document.getElementById('tz').value = tz;
+    tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz == undefined) {
+        tz = new Date().getTimezoneOffset() * -1;
     }
+    document.getElementById('tz').value = tz;
+}
 
+$('#upload-form').on('submit', async (e) => {
+    e.preventDefault();
+
+    // hide any previous error
+    $('#flash-alert').hide();
+
+    showLoading();
+    const formData = new FormData(e.currentTarget);
+
+    // async req to start processing the solves data in background
+    try {
+        const response = await fetch('/api/start-processing', {
+            method: 'POST',
+            body: formData
+        });
+            if (!response.ok) {
+            throw new Error(await response.text() || 'Failed to start processing');
+        }
+        const taskId = (await response.json()).task_id;
+        console.log('processing started successfully, taskId:', taskId);
+        pollTaskStatus(taskId);
+    } catch (error) {
+        showError(error.message);
+    }
+});
+
+async function pollTaskStatus(taskId) {
+    console.log('polling task status for taskId:', taskId);
+    try {
+        const response = await fetch('/api/task-status/' + taskId);
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'failed to check processing status');
+        }
+        if (data.status === 'processing') {
+            // poll again, every 2 seconds
+            setTimeout(function() {
+                pollTaskStatus(taskId);
+            }, 2000);
+        } else if (data.status === 'success') {
+            // it's done processing, go to the results page
+            window.location.href = '/data/' + taskId;
+        } else {
+            showError(data.message || 'failed to check processing status');
+        }
+    } catch (error) {
+        showError('An error occurred during processing: ' + error.message);
+    }
+}
+
+function showError(message) {
+    $('#loading').hide();
+    $('#loading-navbar').hide();
+    $('#content').show();
+
+    $('#flash-alert').html(message);
+    $('#flash-alert').show();
+}
+
+function showLoading() {
+    $('#content').hide();
+    $('#loading').show();
+    $('#loading-navbar').show();
+
+    const loadingText = [
+        "Planning LL skip in inspection",
+        "Learning ZBLL in 5 minutes",
+        "Practicing for the next episode of Worst Judges",
+        "Browsing r/cubers instead of practicing",
+        "Buying every flagship ever released",
+        "Magnetizing the blindfold",
+        "Solving FB in 3 moves on average",
+        "Rotating y2 twice",
+        "Just one more solve",
+        "Doing table abuse without a table",
+        "Is that a 10x10?",
+        "Peeling off the stickers",
+        "Doing 7x7 FMC",
+        "Just using Petrus",
+        "Deleting all bad solves",
+        "Using only hand scrambles",
+        "Breaking in a 1x1",
+        "Restickering a 17x17",
+        "Solving XXCross every time",
+        "Generating memes",
+        "Reverse engineering zeroing",
+        "Arguing about what sub-X means",
+        "Stealing some luck from Yusheng Du",
+        "Getting a 15 move scramble for FMC",
+        "Taking bets on who gets WR first, Sean or Leo"
+    ];
+
+    const randText = shuffle(loadingText);
+    let i = 0;
+
+    setInterval(function() {
+        const newText = randText[i % randText.length] + "...";
+        i++;
+        $("#loading-message").fadeOut(500, function() {
+            $(this).text(newText).fadeIn(500);
+        });
+    }, 4 * 1000);
+}
 
 // control the visibility of inner advanced options
 $('#secondary-y-axis-btns').click(function() {
@@ -274,7 +377,7 @@ $('#custom-trimmed-mean-btns').click(function() {
 
 $('#trim-percentage-select').change(function() {
     $('#trim-percentage-select option:selected').each(function() {
-        var selectedValue = parseInt($(this).val())
+        const selectedValue = parseInt($(this).val())
         if (selectedValue >= 0 && selectedValue <= 40) {
             $("#ao5").text(getCountingSolves(5, selectedValue))
             $("#ao12").text(getCountingSolves(12, selectedValue))
@@ -290,7 +393,7 @@ function getCountingSolves(solvesNumber, trimPercentage) {
 }
 
 function shuffle(array) {
-    var i = array.length,
+    let i = array.length,
         j = 0,
         temp;
 
@@ -307,55 +410,6 @@ function shuffle(array) {
 
     return array;
 }
-
-
-function loading() {
-    $('#content').hide();
-    $('#loading').show();
-    $('#loading-navbar').show();
-
-    var loadingText = [
-"Planning LL skip in inspection",
-"Learning ZBLL in 5 minutes",
-"Practicing for the next episode of Worst Judges",
-"Browsing r/cubers instead of practicing",
-"Buying every flagship ever released",
-"Magnetizing the blindfold",
-"Solving FB in 3 moves on average",
-"Rotating y2 twice",
-"Just one more solve",
-"Doing table abuse without a table",
-"Is that a 10x10?",
-"Peeling off the stickers",
-"Doing 7x7 FMC",
-"Just using Petrus",
-"Deleting all bad solves",
-"Using only hand scrambles",
-"Breaking in a 1x1",
-"Restickering a 17x17",
-"Solving XXCross every time",
-"Generating memes",
-"Reverse engineering zeroing",
-"Arguing about what sub-X means",
-"Stealing some luck from Yusheng Du",
-"Getting a 15 move scramble for FMC",
-"Taking bets on who gets WR first, Sean or Leo"
-                     ];
-
-    var randText = shuffle(loadingText);
-    var i = 0;
-
-    setInterval(function() {
-        var newText = randText[i % randText.length] + "...";
-        i++;
-        $("#loading-message").fadeOut(500, function () {
-            $(this).text(newText).fadeIn(500);
-        });
-        }, 4 * 1000)
-}
-
-
-
 
 </script>
 
