@@ -2,7 +2,7 @@
 
 This is currently the active repo for Kuebiko Cubing hosted at https://www.kuebiko-cubing.com. I'm not affiliated with the original creator at all, I just saw it went EOL and the domain was available and decided to host it myself lol
 
-This codebase probably won't get maintained much. I do have a more permanent hosting setup as of 2025/03/09 so the official website should stay online for the foreseeable future.
+~~This codebase probably won't get maintained much~~ nvm, found some free time to work on it. planning to keep going till everything actually works as intended
 
 ## development/hosting quickstart
 
