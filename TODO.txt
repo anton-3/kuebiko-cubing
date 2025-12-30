@@ -3,9 +3,14 @@ general:
   - mainly so cloudflare doesn't nuke all reqs that take longer than a minute (and I'd rather keep cloudflare proxying so)
 - TESTS
 - optimize loading times
-  - for processing files, maybe migrate to polars?
+  - for processing solve data upload, maybe migrate to polars?
   - look for other options as well
 - fix how data is shown for a full cstimer export that has multiple sessions with the same name
+- for WCA ID queries, seems like replacing zipfile->polars stuff with an sqlite db would make things literally 1000x faster
+
+low prio:
+- plotly.js version is like four years old
+- ensure mobile styling is not shit
 
 ---- old todo below
 TODO puz-cat tabs prevent second row on mobile. collapse? images? also collapse long main nav?
