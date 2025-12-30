@@ -1,6 +1,4 @@
 general:
-- refactor so that the frontend doesn't stall on a single request till the processing is done
-  - mainly so cloudflare doesn't nuke all reqs that take longer than a minute (and I'd rather keep cloudflare proxying so)
 - TESTS
 - optimize loading times
   - for processing solve data upload, maybe migrate to polars?
