@@ -30,6 +30,7 @@ import os
 import dotenv
 
 import functools
+import threading
 print = functools.partial(print, flush=True)
 
 dotenv_location = dotenv.find_dotenv()
@@ -47,6 +48,7 @@ _wca_result_attempts = None
 _wca_comps = None
 _wca_events_timed = None
 _wca_data_file_timestamp = None
+_wca_data_lock = threading.Lock()
 
 
 def init_wca_data():
@@ -57,33 +59,44 @@ def init_wca_data():
     if not os.path.exists(zip_path):
         print(f'WCA data file not found at {zip_path}, WCA ID lookups will not work')
         return
-    _wca_data_file_timestamp = os.path.getctime(zip_path)
-    print(f'WCA data file timestamp: {_wca_data_file_timestamp}')
 
-    print(f'{datetime.now().strftime("%I:%M:%S.%f")} - Loading WCA data...')
+    with _wca_data_lock:
+        current_timestamp = os.path.getctime(zip_path)
+        if _wca_data_file_timestamp is not None and current_timestamp <= _wca_data_file_timestamp:
+            return
 
-    with zipfile.ZipFile(zip_path) as z:
-        print(f'{datetime.now().strftime("%I:%M:%S.%f")} - Loading results...')
-        with z.open('WCA_export_results.tsv') as f:
-            _wca_results = pl.read_csv(f, separator='\t', quote_char=None, schema_overrides={'event_id': pl.Utf8})
+        print(f'WCA data file timestamp: {current_timestamp}')
+        print(f'{datetime.now().strftime("%I:%M:%S.%f")} - Loading WCA data...')
 
-        print(f'{datetime.now().strftime("%I:%M:%S.%f")} - Loading result attempts...')
-        with z.open('WCA_export_result_attempts.tsv') as f:
-            _wca_result_attempts = pl.read_csv(f, separator='\t', quote_char=None)
+        with zipfile.ZipFile(zip_path) as z:
+            print(f'{datetime.now().strftime("%I:%M:%S.%f")} - Loading results...')
+            with z.open('WCA_export_results.tsv') as f:
+                new_results = pl.read_csv(f, separator='\t', quote_char=None, schema_overrides={'event_id': pl.Utf8})
 
-        print(f'{datetime.now().strftime("%I:%M:%S.%f")} - Loading competitions...')
-        with z.open('WCA_export_competitions.tsv') as f:
-            comps = pl.read_csv(f, separator='\t', quote_char=None)
-        _wca_comps = comps.with_columns(
-            pl.date(pl.col('year'), pl.col('month'), pl.col('day')).alias('SolveDatetime')
-        )
+            print(f'{datetime.now().strftime("%I:%M:%S.%f")} - Loading result attempts...')
+            with z.open('WCA_export_result_attempts.tsv') as f:
+                new_result_attempts = pl.read_csv(f, separator='\t', quote_char=None)
 
-        print(f'{datetime.now().strftime("%I:%M:%S.%f")} - Loading events...')
-        with z.open('WCA_export_events.tsv') as f:
-            events = pl.read_csv(f, separator='\t', quote_char=None)
-        _wca_events_timed = events.filter(pl.col('format') == 'time')
+            print(f'{datetime.now().strftime("%I:%M:%S.%f")} - Loading competitions...')
+            with z.open('WCA_export_competitions.tsv') as f:
+                comps = pl.read_csv(f, separator='\t', quote_char=None)
+            new_comps = comps.with_columns(
+                pl.date(pl.col('year'), pl.col('month'), pl.col('day')).alias('SolveDatetime')
+            )
 
-    print(f'{datetime.now().strftime("%I:%M:%S.%f")} - WCA data loaded successfully')
+            print(f'{datetime.now().strftime("%I:%M:%S.%f")} - Loading events...')
+            with z.open('WCA_export_events.tsv') as f:
+                events = pl.read_csv(f, separator='\t', quote_char=None)
+            new_events_timed = events.filter(pl.col('format') == 'time')
+
+        # prevent concurrency issues by assigning all at once
+        _wca_results = new_results
+        _wca_result_attempts = new_result_attempts
+        _wca_comps = new_comps
+        _wca_events_timed = new_events_timed
+        _wca_data_file_timestamp = current_timestamp
+
+        print(f'{datetime.now().strftime("%I:%M:%S.%f")} - WCA data loaded successfully')
 
 
 @jit
@@ -1408,9 +1421,9 @@ def create_dataframe(file, timezone):
         zip_path = os.path.join(WCA_DATA_FOLDER, 'WCA_export.tsv.zip')
         if os.path.exists(zip_path):
             current_wca_data_file_timestamp = os.path.getctime(zip_path)
-            # if current timestamp is more than a week newer than previous data load
+            # if current WCA data file is more than a week newer than previous data load
             if current_wca_data_file_timestamp > _wca_data_file_timestamp + 7 * 24 * 60 * 60:
-                # re-init the data from the new zip
+                # re-init the data into memory from the new zip
                 init_wca_data()
 
         results = _wca_results.filter(pl.col('person_id') == wca_id)
