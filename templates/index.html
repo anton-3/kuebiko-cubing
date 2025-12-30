@@ -256,7 +256,7 @@ $('#upload-form').on('submit', async (e) => {
             body: formData
         });
             if (!response.ok) {
-            throw new Error(await response.text() || 'Failed to start processing');
+            throw new Error((await response.json()).error || 'Failed to start processing');
         }
         const taskId = (await response.json()).task_id;
         console.log('processing started successfully, taskId:', taskId);
