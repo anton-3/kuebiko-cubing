@@ -1,11 +1,10 @@
 general:
 - refactor so that the frontend doesn't stall on a single request till the processing is done
-  - mainly so cloudflare doesn't nuke all reqs that take longer than a minute
+  - mainly so cloudflare doesn't nuke all reqs that take longer than a minute (and I'd rather keep cloudflare proxying so)
 - TESTS
-- optimize loading times in general
-  - on WCA IDs, it unzips all the data in the history of WCA and then filters for relevant lines by doing a linear search through literally everything. we can probably frontload the initial .tsv processing and store the data in memory in some way so that we get constant or log n lookups
-  - for txt's, still gotta look into it
-- properly handle invalid wca id input
+- optimize loading times
+  - for processing files, maybe migrate to polars?
+  - look for other options as well
 - fix how data is shown for a full cstimer export that has multiple sessions with the same name
 
 ---- old todo below
