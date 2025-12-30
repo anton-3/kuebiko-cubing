@@ -6,7 +6,10 @@ numpy
 pandas
 pip-tools
 plotly
-polars[rtcompat]
+# there's polars, polars[rtcompat], and polars-lts-cpu
+# each has increasingly more support for old CPUs, at the cost of performance
+# my server's got an old CPU so we're going with LTS
+polars-lts-cpu
 pyarrow
 python-dotenv
 waitress
