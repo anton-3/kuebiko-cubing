@@ -40,7 +40,7 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 _task_store = {}
 _task_store_lock = threading.Lock() # use this whenever messing with task store
 _executor = ThreadPoolExecutor(max_workers=4)
-TASK_EXPIRY_SECONDS = 30 * 60 # 30min
+TASK_EXPIRY_SECONDS = 10 * 60 # 10min
 
 
 def _cleanup_old_tasks():
