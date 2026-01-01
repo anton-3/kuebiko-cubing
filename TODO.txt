@@ -1,14 +1,18 @@
 general:
 - TESTS
+  - integration: a script that hits the submit endpoint with different data, simulates polling, tests response. maybe snapshot testing?
+  - unit: call process_data with LOTS of different files/options/etc. cover every supported timer data format
 - optimize loading times
   - for processing solve data upload, maybe migrate to polars?
   - look for other options as well
 - fix how data is shown for a full cstimer export that has multiple sessions with the same name
 - for WCA ID queries, seems like replacing zipfile->polars stuff with an sqlite db would make things literally 1000x faster
+- make the sessions list scrollable instead of scrolling down the whole page
 
 low prio:
 - plotly.js version is like four years old
 - ensure mobile styling is not shit
+- bug with multiple sessions showing at once? like one below the other
 
 ---- old todo below
 TODO puz-cat tabs prevent second row on mobile. collapse? images? also collapse long main nav?
