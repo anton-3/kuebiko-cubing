@@ -10,6 +10,7 @@ general:
 - make the sessions list scrollable instead of scrolling down the whole page
 
 low prio:
+- more detailed logging so I can see how many ppl are actually using this thing
 - plotly.js version is like four years old
 - ensure mobile styling is not shit
 - bug with multiple sessions showing at once? like one below the other
